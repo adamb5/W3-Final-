@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Real-time cryptocurrency portfolio dashboard with market analytics, price tracking, and portfolio management">
+    <title>Crypto Portfolio Dashboard | Real-Time Market Analytics</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <h1>Dashboard</h1>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-view="market">Market</button>
+                <button class="nav-btn" data-view="portfolio">Portfolio</button>
+                <button class="nav-btn" data-view="trending">Trending</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <div class="search-bar-container">
+            <div class="search-bar">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input type="text" id="search-input" class="search-input" placeholder="Search cryptocurrencies...">
+                <button class="search-clear" id="search-clear" style="display: none;">×</button>
+            </div>
+        </div>
+
+        <div class="view-container">
+            <div id="market-view" class="view active">
+                <div class="view-header">
+                    <h2>Market Overview</h2>
+                    <div class="view-controls">
+                        <button class="refresh-btn" id="refresh-market">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+                            </svg>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="market-content" class="market-content">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading market data...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="portfolio-view" class="view">
+                <div class="view-header">
+                    <h2>My Portfolio</h2>
+                </div>
+                <div id="portfolio-content" class="portfolio-content">
+                    <div id="portfolio-summary" class="portfolio-summary"></div>
+                    <div id="portfolio-holdings" class="portfolio-holdings"></div>
+                    <div id="add-coin-section" class="add-coin-section">
+                        <h3>Add Coin to Portfolio</h3>
+                        <div class="add-coin-form">
+                            <div class="form-group">
+                                <label for="coin-select">Select Coin</label>
+                                <input type="text" id="coin-select" class="coin-select-input" placeholder="Search and select coin...">
+                                <div id="coin-select-dropdown" class="coin-select-dropdown"></div>
+                            </div>
+                            <div class="form-group">
+                                <label for="coin-quantity">Quantity</label>
+                                <input type="number" id="coin-quantity" class="coin-quantity-input" placeholder="0.00" step="0.00000001" min="0">
+                            </div>
+                            <button class="btn btn-primary" id="add-coin-btn">Add to Portfolio</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="trending-view" class="view">
+                <div class="view-header">
+                    <h2>Trending Coins</h2>
+                </div>
+                <div id="trending-content" class="trending-content">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading trending coins...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="coin-detail-view" class="view">
+                <div class="view-header">
+                    <button class="back-btn" id="back-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"></path>
+                        </svg>
+                        Back
+                    </button>
+                    <h2 id="coin-detail-title">Coin Details</h2>
+                </div>
+                <div id="coin-detail-content" class="coin-detail-content">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading coin details...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="utils.js"></script>
+    <script src="api.js"></script>
+    <script src="portfolio.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+

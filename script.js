@@ -1,0 +1,641 @@
+let currentView = 'market';
+let marketData = [];
+let filteredMarketData = [];
+let coinList = [];
+let searchTimeout;
+
+const init = () => {
+    setupNavigation();
+    setupSearch();
+    setupPortfolioForm();
+    loadMarketData();
+    loadCoinList();
+};
+
+const setupNavigation = () => {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const view = btn.dataset.view;
+            switchView(view);
+        });
+    });
+    
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            switchView('market');
+        });
+    }
+};
+
+const switchView = (viewName) => {
+    currentView = viewName;
+    
+    document.querySelectorAll('.view').forEach(view => {
+        view.classList.remove('active');
+    });
+    
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const targetView = document.getElementById(`${viewName}-view`);
+    if (targetView) {
+        targetView.classList.add('active');
+    }
+    
+    const targetNavBtn = document.querySelector(`[data-view="${viewName}"]`);
+    if (targetNavBtn) {
+        targetNavBtn.classList.add('active');
+    }
+    
+    if (viewName === 'portfolio') {
+        loadPortfolioView();
+    } else if (viewName === 'trending') {
+        loadTrendingView();
+    } else if (viewName === 'market') {
+        loadMarketData();
+    }
+};
+
+const setupSearch = () => {
+    const searchInput = document.getElementById('search-input');
+    const searchClear = document.getElementById('search-clear');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            
+            if (query.length > 0) {
+                searchClear.style.display = 'block';
+                debounceSearch(query);
+            } else {
+                searchClear.style.display = 'none';
+                filteredMarketData = marketData;
+                renderMarketData();
+            }
+        });
+    }
+    
+    if (searchClear) {
+        searchClear.addEventListener('click', () => {
+            searchInput.value = '';
+            searchClear.style.display = 'none';
+            filteredMarketData = marketData;
+            renderMarketData();
+        });
+    }
+};
+
+const debounceSearch = debounce((query) => {
+    if (currentView === 'market') {
+        filteredMarketData = marketData.filter(coin => 
+            coin.name.toLowerCase().includes(query.toLowerCase()) ||
+            coin.symbol.toLowerCase().includes(query.toLowerCase())
+        );
+        renderMarketData();
+    }
+}, 300);
+
+const loadCoinList = async () => {
+    try {
+        coinList = await fetchCoinList();
+    } catch (error) {
+        console.error('Failed to load coin list:', error);
+    }
+};
+
+const loadMarketData = async () => {
+    const container = document.getElementById('market-content');
+    if (!container) return;
+    
+    showLoading(container);
+    
+    try {
+        marketData = await fetchMarketData();
+        filteredMarketData = marketData;
+        renderMarketData();
+    } catch (error) {
+        showError(container, 'Failed to load market data. Please try again later.');
+    }
+};
+
+const renderMarketData = () => {
+    const container = document.getElementById('market-content');
+    if (!container) return;
+    
+    if (filteredMarketData.length === 0) {
+        showEmpty(container, 'No cryptocurrencies found.');
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="market-table-container">
+            <table class="market-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Coin</th>
+                        <th class="sortable" data-sort="current_price">Price</th>
+                        <th class="sortable" data-sort="price_change_percentage_24h">24h</th>
+                        <th class="sortable" data-sort="price_change_percentage_7d_in_currency">7d</th>
+                        <th class="sortable" data-sort="price_change_percentage_30d_in_currency">30d</th>
+                        <th class="sortable" data-sort="market_cap">Market Cap</th>
+                        <th class="sortable" data-sort="total_volume">Volume</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filteredMarketData.map((coin, index) => `
+                        <tr class="coin-row" data-coin-id="${coin.id}">
+                            <td>${index + 1}</td>
+                            <td>
+                                <div class="coin-info">
+                                    <img src="${coin.image}" alt="${coin.name}" class="coin-icon" onerror="this.style.display='none'">
+                                    <div>
+                                        <div class="coin-name">${coin.name}</div>
+                                        <div class="coin-symbol">${coin.symbol.toUpperCase()}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="coin-price">${formatCurrency(coin.current_price)}</td>
+                            <td class="${getChangeClass(coin.price_change_percentage_24h)}">
+                                ${formatPercentage(coin.price_change_percentage_24h)}
+                            </td>
+                            <td class="${getChangeClass(coin.price_change_percentage_7d_in_currency)}">
+                                ${formatPercentage(coin.price_change_percentage_7d_in_currency)}
+                            </td>
+                            <td class="${getChangeClass(coin.price_change_percentage_30d_in_currency)}">
+                                ${formatPercentage(coin.price_change_percentage_30d_in_currency)}
+                            </td>
+                            <td>${formatNumber(coin.market_cap)}</td>
+                            <td>${formatNumber(coin.total_volume)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    setupTableSorting();
+    setupCoinRowClicks();
+};
+
+const setupTableSorting = () => {
+    const sortableHeaders = document.querySelectorAll('.sortable');
+    let currentSort = { column: null, direction: 'asc' };
+    
+    sortableHeaders.forEach(header => {
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', () => {
+            const column = header.dataset.sort;
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            
+            sortMarketData(column, currentSort.direction);
+            updateSortIndicators(header, currentSort.direction);
+        });
+    });
+};
+
+const sortMarketData = (column, direction) => {
+    filteredMarketData.sort((a, b) => {
+        const aVal = a[column] || 0;
+        const bVal = b[column] || 0;
+        return direction === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+    renderMarketData();
+};
+
+const updateSortIndicators = (activeHeader, direction) => {
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.textContent = header.textContent.replace(' ↑', '').replace(' ↓', '');
+    });
+    activeHeader.textContent += direction === 'asc' ? ' ↑' : ' ↓';
+};
+
+const setupCoinRowClicks = () => {
+    const coinRows = document.querySelectorAll('.coin-row');
+    coinRows.forEach(row => {
+        row.addEventListener('click', () => {
+            const coinId = row.dataset.coinId;
+            showCoinDetails(coinId);
+        });
+    });
+};
+
+const showCoinDetails = (coinId) => {
+    switchView('coin-detail');
+    loadCoinDetails(coinId);
+};
+
+const loadCoinDetails = async (coinId) => {
+    const container = document.getElementById('coin-detail-content');
+    const title = document.getElementById('coin-detail-title');
+    if (!container) return;
+    
+    showLoading(container);
+    
+    try {
+        const coin = await fetchCoinDetails(coinId);
+        if (title) title.textContent = `${coin.name} (${coin.symbol.toUpperCase()})`;
+        renderCoinDetails(coin);
+    } catch (error) {
+        showError(container, 'Failed to load coin details.');
+    }
+};
+
+const renderCoinDetails = (coin) => {
+    const container = document.getElementById('coin-detail-content');
+    if (!container) return;
+    
+    const marketData = coin.market_data;
+    const change24h = marketData.price_change_percentage_24h || 0;
+    const change7d = marketData.price_change_percentage_7d_in_currency || 0;
+    const change30d = marketData.price_change_percentage_30d_in_currency || 0;
+    
+    container.innerHTML = `
+        <div class="coin-detail-header">
+            <div class="coin-detail-logo">
+                <img src="${coin.image.large}" alt="${coin.name}" class="coin-large-icon">
+            </div>
+            <div class="coin-detail-info">
+                <h3>${formatCurrency(marketData.current_price.usd)}</h3>
+                <div class="coin-detail-changes">
+                    <span class="${getChangeClass(change24h)}">24h: ${formatPercentage(change24h)}</span>
+                    <span class="${getChangeClass(change7d)}">7d: ${formatPercentage(change7d)}</span>
+                    <span class="${getChangeClass(change30d)}">30d: ${formatPercentage(change30d)}</span>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="addCoinToPortfolioFromDetail('${coin.id}')">Add to Portfolio</button>
+        </div>
+        <div class="coin-detail-stats">
+            <div class="stat-card">
+                <div class="stat-label">Market Cap</div>
+                <div class="stat-value">${formatNumber(marketData.market_cap.usd)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Volume (24h)</div>
+                <div class="stat-value">${formatNumber(marketData.total_volume.usd)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Circulating Supply</div>
+                <div class="stat-value">${formatLargeNumber(marketData.circulating_supply)} ${coin.symbol.toUpperCase()}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Supply</div>
+                <div class="stat-value">${marketData.total_supply ? formatLargeNumber(marketData.total_supply) : 'N/A'}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">All-Time High</div>
+                <div class="stat-value">${formatCurrency(marketData.ath.usd)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">All-Time Low</div>
+                <div class="stat-value">${formatCurrency(marketData.atl.usd)}</div>
+            </div>
+        </div>
+        <div class="coin-detail-chart">
+            <div class="chart-controls">
+                <button class="chart-btn active" data-days="1">24h</button>
+                <button class="chart-btn" data-days="7">7d</button>
+                <button class="chart-btn" data-days="30">30d</button>
+                <button class="chart-btn" data-days="90">90d</button>
+                <button class="chart-btn" data-days="365">1y</button>
+            </div>
+            <div id="chart-container" class="chart-container">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading chart...</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    setupChartControls(coin.id);
+    loadChart(coin.id, 7);
+};
+
+const setupChartControls = (coinId) => {
+    const chartBtns = document.querySelectorAll('.chart-btn');
+    chartBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const days = parseInt(btn.dataset.days);
+            loadChart(coinId, days);
+        });
+    });
+};
+
+const loadChart = async (coinId, days) => {
+    const container = document.getElementById('chart-container');
+    if (!container) return;
+    
+    showLoading(container);
+    
+    try {
+        const data = await fetchHistoricalData(coinId, days);
+        renderChart(data.prices, days);
+    } catch (error) {
+        showError(container, 'Failed to load chart data.');
+    }
+};
+
+const renderChart = (prices, days) => {
+    const container = document.getElementById('chart-container');
+    if (!container || !prices || prices.length === 0) return;
+    
+    const width = container.offsetWidth || 800;
+    const height = 300;
+    const padding = 40;
+    const chartWidth = width - padding * 2;
+    const chartHeight = height - padding * 2;
+    
+    const minPrice = Math.min(...prices.map(p => p[1]));
+    const maxPrice = Math.max(...prices.map(p => p[1]));
+    const priceRange = maxPrice - minPrice || 1;
+    
+    const points = prices.map((point, index) => {
+        const x = padding + (index / (prices.length - 1)) * chartWidth;
+        const y = padding + chartHeight - ((point[1] - minPrice) / priceRange) * chartHeight;
+        return { x, y, price: point[1], time: point[0] };
+    });
+    
+    const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const areaPath = pathData + ` L ${points[points.length - 1].x} ${height - padding} L ${padding} ${height - padding} Z`;
+    
+    const firstPrice = prices[0][1];
+    const lastPrice = prices[prices.length - 1][1];
+    const change = ((lastPrice - firstPrice) / firstPrice) * 100;
+    const changeClass = change >= 0 ? 'positive' : 'negative';
+    
+    container.innerHTML = `
+        <div class="chart-wrapper">
+            <svg width="${width}" height="${height}" class="price-chart">
+                <defs>
+                    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:${change >= 0 ? '#10b981' : '#ef4444'};stop-opacity:0.3" />
+                        <stop offset="100%" style="stop-color:${change >= 0 ? '#10b981' : '#ef4444'};stop-opacity:0" />
+                    </linearGradient>
+                </defs>
+                <path d="${areaPath}" fill="url(#chartGradient)" />
+                <path d="${pathData}" stroke="${change >= 0 ? '#10b981' : '#ef4444'}" stroke-width="2" fill="none" />
+                ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${change >= 0 ? '#10b981' : '#ef4444'}" opacity="0" class="chart-point" data-price="${p.price}" data-time="${p.time}">`).join('')}
+            </svg>
+            <div class="chart-info">
+                <div class="chart-price">${formatCurrency(lastPrice)}</div>
+                <div class="chart-change ${changeClass}">${formatPercentage(change)}</div>
+            </div>
+        </div>
+    `;
+};
+
+const setupPortfolioForm = () => {
+    const coinSelect = document.getElementById('coin-select');
+    const coinQuantity = document.getElementById('coin-quantity');
+    const addCoinBtn = document.getElementById('add-coin-btn');
+    const dropdown = document.getElementById('coin-select-dropdown');
+    
+    let selectedCoinId = null;
+    
+    if (coinSelect) {
+        coinSelect.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            if (query.length > 0 && coinList.length > 0) {
+                const filtered = coinList.filter(coin => 
+                    coin.name.toLowerCase().includes(query.toLowerCase()) ||
+                    coin.symbol.toLowerCase().includes(query.toLowerCase())
+                ).slice(0, 10);
+                
+                dropdown.innerHTML = filtered.map(coin => `
+                    <div class="dropdown-item" data-coin-id="${coin.id}" data-coin-name="${coin.name}">
+                        ${coin.name} (${coin.symbol.toUpperCase()})
+                    </div>
+                `).join('');
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        });
+    }
+    
+    if (dropdown) {
+        dropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.dropdown-item');
+            if (item) {
+                selectedCoinId = item.dataset.coinId;
+                coinSelect.value = item.dataset.coinName;
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!coinSelect.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+    }
+    
+    if (addCoinBtn) {
+        addCoinBtn.addEventListener('click', () => {
+            if (!selectedCoinId) {
+                alert('Please select a coin');
+                return;
+            }
+            const quantity = parseFloat(coinQuantity.value);
+            if (isNaN(quantity) || quantity <= 0) {
+                alert('Please enter a valid quantity');
+                return;
+            }
+            addToPortfolio(selectedCoinId, quantity);
+            coinSelect.value = '';
+            coinQuantity.value = '';
+            selectedCoinId = null;
+            loadPortfolioView();
+        });
+    }
+};
+
+const loadPortfolioView = async () => {
+    const portfolio = getPortfolio();
+    const summaryContainer = document.getElementById('portfolio-summary');
+    const holdingsContainer = document.getElementById('portfolio-holdings');
+    
+    if (portfolio.length === 0) {
+        if (summaryContainer) summaryContainer.innerHTML = '';
+        if (holdingsContainer) {
+            holdingsContainer.innerHTML = '<div class="empty-state"><p>Your portfolio is empty. Add coins to get started!</p></div>';
+        }
+        return;
+    }
+    
+    showLoading(summaryContainer);
+    showLoading(holdingsContainer);
+    
+    try {
+        const portfolioData = await getPortfolioValue(portfolio);
+        renderPortfolioSummary(portfolioData);
+        renderPortfolioHoldings(portfolioData.holdings);
+    } catch (error) {
+        showError(holdingsContainer, 'Failed to load portfolio data.');
+    }
+};
+
+const renderPortfolioSummary = (data) => {
+    const container = document.getElementById('portfolio-summary');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="portfolio-summary-cards">
+            <div class="summary-card">
+                <div class="summary-label">Total Value</div>
+                <div class="summary-value">${formatCurrency(data.totalValue)}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Total Change</div>
+                <div class="summary-value ${getChangeClass(data.totalChange)}">
+                    ${formatCurrency(data.totalChange)} (${formatPercentage(data.totalChangePercent)})
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Holdings</div>
+                <div class="summary-value">${data.holdings.length}</div>
+            </div>
+        </div>
+    `;
+};
+
+const renderPortfolioHoldings = (holdings) => {
+    const container = document.getElementById('portfolio-holdings');
+    if (!container) return;
+    
+    if (holdings.length === 0) {
+        showEmpty(container, 'No holdings found.');
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="holdings-table-container">
+            <table class="holdings-table">
+                <thead>
+                    <tr>
+                        <th>Coin</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Value</th>
+                        <th>24h Change</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${holdings.map(holding => `
+                        <tr>
+                            <td>
+                                <div class="coin-info">
+                                    <img src="${holding.image}" alt="${holding.name}" class="coin-icon" onerror="this.style.display='none'">
+                                    <div>
+                                        <div class="coin-name">${holding.name}</div>
+                                        <div class="coin-symbol">${holding.symbol.toUpperCase()}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <input type="number" class="quantity-input" value="${holding.quantity}" 
+                                       data-coin-id="${holding.coinId}" 
+                                       onchange="updatePortfolioQuantity('${holding.coinId}', this.value)">
+                            </td>
+                            <td>${formatCurrency(holding.current_price)}</td>
+                            <td>${formatCurrency(holding.value)}</td>
+                            <td class="${getChangeClass(holding.change24h)}">
+                                ${formatPercentage(holding.change24h)}
+                            </td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="removeFromPortfolioAndReload('${holding.coinId}')">Remove</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+};
+
+const loadTrendingView = async () => {
+    const container = document.getElementById('trending-content');
+    if (!container) return;
+    
+    showLoading(container);
+    
+    try {
+        const trending = await fetchTrendingCoins();
+        renderTrendingCoins(trending);
+    } catch (error) {
+        showError(container, 'Failed to load trending coins.');
+    }
+};
+
+const renderTrendingCoins = (coins) => {
+    const container = document.getElementById('trending-content');
+    if (!container) return;
+    
+    if (coins.length === 0) {
+        showEmpty(container, 'No trending coins found.');
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="trending-grid">
+            ${coins.map((coin, index) => `
+                <div class="trending-card card" onclick="showCoinDetails('${coin.id}')">
+                    <div class="trending-rank">#${index + 1}</div>
+                    <div class="trending-coin-info">
+                        <img src="${coin.image}" alt="${coin.name}" class="coin-icon" onerror="this.style.display='none'">
+                        <div>
+                            <div class="coin-name">${coin.name}</div>
+                            <div class="coin-symbol">${coin.symbol.toUpperCase()}</div>
+                        </div>
+                    </div>
+                    <div class="trending-price">${formatCurrency(coin.current_price)}</div>
+                    <div class="trending-change ${getChangeClass(coin.price_change_percentage_24h)}">
+                        ${formatPercentage(coin.price_change_percentage_24h)}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+};
+
+const updatePortfolioQuantity = (coinId, quantity) => {
+    updateQuantity(coinId, quantity);
+    loadPortfolioView();
+};
+
+const removeFromPortfolioAndReload = (coinId) => {
+    if (confirm('Remove this coin from your portfolio?')) {
+        removeFromPortfolio(coinId);
+        loadPortfolioView();
+    }
+};
+
+const addCoinToPortfolioFromDetail = (coinId) => {
+    const quantity = prompt('Enter quantity:');
+    if (quantity && !isNaN(parseFloat(quantity)) && parseFloat(quantity) > 0) {
+        addToPortfolio(coinId, quantity);
+        alert('Coin added to portfolio!');
+    }
+};
+
+const refreshBtn = document.getElementById('refresh-market');
+if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+        loadMarketData();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+

@@ -85,12 +85,7 @@
                 // For free tier, no headers needed
                 const response = await fetch(apiUrl);
                 
-                // If using pro API, uncomment below:
-                // const response = await fetch(apiUrl, {
-                //     headers: {
-                //         'x-cg-pro-api-key': apiKey
-                //     }
-                // });
+              
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
