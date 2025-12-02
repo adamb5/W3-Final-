@@ -247,7 +247,7 @@ const renderMarketData = () => {
                                         </div>
                                     </div>
                                     <div class="detail-actions">
-                                        <button class="btn btn-primary" onclick="showCoinDetails('${coin.id}')">View Full Details</button>
+                                        <button class="btn btn-primary view-details-btn" data-coin-id="${coin.id}">View Full Details</button>
                                     </div>
                                 </div>
                             </td>
@@ -263,6 +263,20 @@ const renderMarketData = () => {
     setupTableSorting();
     setupCoinRowClicks();
     setupExpandButtons();
+    setupViewDetailsButtons();
+};
+
+const setupViewDetailsButtons = () => {
+    const viewDetailsBtns = document.querySelectorAll('.view-details-btn');
+    viewDetailsBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const coinId = btn.dataset.coinId;
+            if (coinId) {
+                showCoinDetails(coinId);
+            }
+        });
+    });
 };
 
 const renderSparkline = (prices, changePercent) => {
@@ -381,14 +395,24 @@ const loadCoinDetails = async (coinId) => {
     const title = document.getElementById('coin-detail-title');
     if (!container) return;
     
+    if (!coinId) {
+        showError(container, 'Invalid coin ID.');
+        return;
+    }
+    
     showLoading(container);
     
     try {
         const coin = await fetchCoinDetails(coinId);
+        if (!coin || !coin.market_data) {
+            throw new Error('Invalid coin data received');
+        }
         if (title) title.textContent = `${coin.name} (${coin.symbol.toUpperCase()})`;
         renderCoinDetails(coin);
     } catch (error) {
-        showError(container, 'Failed to load coin details.');
+        console.error('Error loading coin details:', error);
+        const errorMsg = error.message || 'Failed to load coin details. Please check the console for more information.';
+        showError(container, errorMsg);
     }
 };
 
@@ -397,6 +421,11 @@ const renderCoinDetails = (coin) => {
     if (!container) return;
     
     const marketData = coin.market_data;
+    if (!marketData) {
+        showError(container, 'Market data not available for this coin.');
+        return;
+    }
+    
     const change24h = marketData.price_change_percentage_24h || 0;
     const change7d = marketData.price_change_percentage_7d_in_currency || 0;
     const change30d = marketData.price_change_percentage_30d_in_currency || 0;
@@ -414,7 +443,7 @@ const renderCoinDetails = (coin) => {
                     <span class="${getChangeClass(change30d)}">30d: ${formatPercentage(change30d)}</span>
                 </div>
             </div>
-            <button class="btn btn-primary" onclick="addCoinToPortfolioFromDetail('${coin.id}')">Add to Portfolio</button>
+            <button class="btn btn-primary add-portfolio-detail-btn" data-coin-id="${coin.id}">Add to Portfolio</button>
         </div>
         <div class="coin-detail-stats">
             <div class="stat-card">
@@ -461,6 +490,16 @@ const renderCoinDetails = (coin) => {
     
     setupChartControls(coin.id);
     loadChart(coin.id, 7);
+    setupAddPortfolioDetailButton(coin.id);
+};
+
+const setupAddPortfolioDetailButton = (coinId) => {
+    const btn = document.querySelector('.add-portfolio-detail-btn');
+    if (btn) {
+        btn.addEventListener('click', () => {
+            addCoinToPortfolioFromDetail(coinId);
+        });
+    }
 };
 
 const setupChartControls = (coinId) => {

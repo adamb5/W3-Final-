@@ -26,12 +26,27 @@ const fetchMarketData = async (page = 1, perPage = 100, forceRefresh = false) =>
 };
 
 const fetchCoinDetails = async (coinId) => {
+    if (!coinId) {
+        throw new Error('Coin ID is required');
+    }
+    
     try {
+        const encodedCoinId = encodeURIComponent(coinId);
         const response = await fetch(
-            `${API_BASE_URL}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
+            `${API_BASE_URL}/coins/${encodedCoinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
         );
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        if (!data || !data.id) {
+            throw new Error('Invalid coin data received from API');
+        }
+        
+        return data;
     } catch (error) {
         console.error('Error fetching coin details:', error);
         throw error;
