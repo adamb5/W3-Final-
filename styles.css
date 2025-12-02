@@ -418,7 +418,96 @@ body {
 
 .market-table tbody tr:hover {
     background-color: var(--bg-hover);
+}
+
+.market-table tbody tr.coin-row:not(.expanded):hover {
     cursor: pointer;
+}
+
+.market-table tbody tr.expanded {
+    background-color: var(--bg-hover);
+}
+
+.expand-cell {
+    width: 40px;
+    padding: var(--spacing-sm);
+}
+
+.expand-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    transition: color var(--transition-base);
+    border-radius: var(--border-radius-sm);
+}
+
+.expand-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.sparkline-cell {
+    padding: var(--spacing-sm);
+    text-align: center;
+}
+
+.sparkline {
+    display: block;
+    margin: 0 auto;
+}
+
+.coin-detail-row {
+    background-color: var(--bg-secondary);
+}
+
+.coin-detail-row td {
+    padding: 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.expanded-details {
+    padding: var(--spacing-lg);
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.detail-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
+}
+
+.detail-value {
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
+    font-weight: var(--font-weight-semibold);
+}
+
+.detail-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+}
+
+.add-portfolio-btn {
+    white-space: nowrap;
 }
 
 .coin-info {
@@ -863,6 +952,16 @@ body {
 
     .chart-controls {
         flex-wrap: wrap;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .market-table th,
+    .market-table td {
+        padding: var(--spacing-sm);
+        font-size: var(--font-size-sm);
     }
 }
 

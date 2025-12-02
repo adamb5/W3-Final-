@@ -1,12 +1,24 @@
 const API_BASE_URL = 'https://api.coingecko.com/api/v3';
 
-const fetchMarketData = async (page = 1, perPage = 100) => {
+let marketDataCache = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 60000;
+
+const fetchMarketData = async (page = 1, perPage = 100, forceRefresh = false) => {
+    const now = Date.now();
+    if (!forceRefresh && marketDataCache && cacheTimestamp && (now - cacheTimestamp) < CACHE_DURATION) {
+        return marketDataCache;
+    }
+    
     try {
         const response = await fetch(
             `${API_BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${perPage}&page=${page}&sparkline=true&price_change_percentage=24h,7d,30d`
         );
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
+        const data = await response.json();
+        marketDataCache = data;
+        cacheTimestamp = now;
+        return data;
     } catch (error) {
         console.error('Error fetching market data:', error);
         throw error;

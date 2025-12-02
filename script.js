@@ -2,7 +2,8 @@ let currentView = 'market';
 let marketData = [];
 let filteredMarketData = [];
 let coinList = [];
-let searchTimeout;
+let expandedRows = new Set();
+let marketRefreshInterval = null;
 
 const init = () => {
     setupNavigation();
@@ -10,6 +11,16 @@ const init = () => {
     setupPortfolioForm();
     loadMarketData();
     loadCoinList();
+    startMarketAutoRefresh();
+};
+
+const startMarketAutoRefresh = () => {
+    if (marketRefreshInterval) clearInterval(marketRefreshInterval);
+    marketRefreshInterval = setInterval(() => {
+        if (currentView === 'market') {
+            loadMarketData(true);
+        }
+    }, 60000);
 };
 
 const setupNavigation = () => {
@@ -106,18 +117,31 @@ const loadCoinList = async () => {
     }
 };
 
-const loadMarketData = async () => {
+const loadMarketData = async (forceRefresh = false) => {
     const container = document.getElementById('market-content');
     if (!container) return;
     
-    showLoading(container);
+    if (!forceRefresh) {
+        showLoading(container);
+    }
     
     try {
-        marketData = await fetchMarketData();
-        filteredMarketData = marketData;
+        marketData = await fetchMarketData(1, 100, forceRefresh);
+        const searchInput = document.getElementById('search-input');
+        if (searchInput && searchInput.value.trim()) {
+            const query = searchInput.value.trim().toLowerCase();
+            filteredMarketData = marketData.filter(coin => 
+                coin.name.toLowerCase().includes(query) ||
+                coin.symbol.toLowerCase().includes(query)
+            );
+        } else {
+            filteredMarketData = marketData;
+        }
         renderMarketData();
     } catch (error) {
-        showError(container, 'Failed to load market data. Please try again later.');
+        if (!forceRefresh) {
+            showError(container, 'Failed to load market data. Please try again later.');
+        }
     }
 };
 
@@ -135,19 +159,32 @@ const renderMarketData = () => {
             <table class="market-table">
                 <thead>
                     <tr>
+                        <th></th>
                         <th>#</th>
                         <th>Coin</th>
                         <th class="sortable" data-sort="current_price">Price</th>
                         <th class="sortable" data-sort="price_change_percentage_24h">24h</th>
                         <th class="sortable" data-sort="price_change_percentage_7d_in_currency">7d</th>
                         <th class="sortable" data-sort="price_change_percentage_30d_in_currency">30d</th>
+                        <th>7d Chart</th>
                         <th class="sortable" data-sort="market_cap">Market Cap</th>
                         <th class="sortable" data-sort="total_volume">Volume</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${filteredMarketData.map((coin, index) => `
-                        <tr class="coin-row" data-coin-id="${coin.id}">
+                    ${filteredMarketData.map((coin, index) => {
+                        const isExpanded = expandedRows.has(coin.id);
+                        const sparkline = coin.sparkline_in_7d?.price || [];
+                        return `
+                        <tr class="coin-row ${isExpanded ? 'expanded' : ''}" data-coin-id="${coin.id}">
+                            <td class="expand-cell">
+                                <button class="expand-btn" data-coin-id="${coin.id}">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="${isExpanded ? 'M18 15l-6-6-6 6' : 'M9 18l6-6-6-6'}"></path>
+                                    </svg>
+                                </button>
+                            </td>
                             <td>${index + 1}</td>
                             <td>
                                 <div class="coin-info">
@@ -168,10 +205,56 @@ const renderMarketData = () => {
                             <td class="${getChangeClass(coin.price_change_percentage_30d_in_currency)}">
                                 ${formatPercentage(coin.price_change_percentage_30d_in_currency)}
                             </td>
+                            <td class="sparkline-cell">
+                                ${sparkline.length > 0 ? renderSparkline(sparkline, coin.price_change_percentage_7d_in_currency) : '-'}
+                            </td>
                             <td>${formatNumber(coin.market_cap)}</td>
                             <td>${formatNumber(coin.total_volume)}</td>
+                            <td>
+                                <button class="btn btn-sm btn-secondary add-portfolio-btn" data-coin-id="${coin.id}" onclick="event.stopPropagation(); addCoinToPortfolioQuick('${coin.id}')">
+                                    Add
+                                </button>
+                            </td>
                         </tr>
-                    `).join('')}
+                        ${isExpanded ? `
+                        <tr class="coin-detail-row" data-coin-id="${coin.id}">
+                            <td colspan="11">
+                                <div class="expanded-details">
+                                    <div class="detail-grid">
+                                        <div class="detail-item">
+                                            <span class="detail-label">Circulating Supply</span>
+                                            <span class="detail-value">${formatLargeNumber(coin.circulating_supply || 0)} ${coin.symbol.toUpperCase()}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">Total Supply</span>
+                                            <span class="detail-value">${coin.total_supply ? formatLargeNumber(coin.total_supply) + ' ' + coin.symbol.toUpperCase() : 'N/A'}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">24h High</span>
+                                            <span class="detail-value">${formatCurrency(coin.high_24h)}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">24h Low</span>
+                                            <span class="detail-value">${formatCurrency(coin.low_24h)}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">All-Time High</span>
+                                            <span class="detail-value">${formatCurrency(coin.ath)}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <span class="detail-label">All-Time Low</span>
+                                            <span class="detail-value">${formatCurrency(coin.atl)}</span>
+                                        </div>
+                                    </div>
+                                    <div class="detail-actions">
+                                        <button class="btn btn-primary" onclick="showCoinDetails('${coin.id}')">View Full Details</button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        ` : ''}
+                    `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
@@ -179,6 +262,64 @@ const renderMarketData = () => {
     
     setupTableSorting();
     setupCoinRowClicks();
+    setupExpandButtons();
+};
+
+const renderSparkline = (prices, changePercent) => {
+    if (!prices || prices.length === 0) return '-';
+    if (prices.length === 1) {
+        const x = 50;
+        const y = 15;
+        const isPositive = (changePercent || 0) >= 0;
+        const color = isPositive ? '#10b981' : '#ef4444';
+        return `<svg width="100" height="30" class="sparkline"><circle cx="${x}" cy="${y}" r="2" fill="${color}"/></svg>`;
+    }
+    
+    const width = 100;
+    const height = 30;
+    const padding = 2;
+    const chartWidth = width - padding * 2;
+    const chartHeight = height - padding * 2;
+    
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice || 1;
+    
+    const points = prices.map((price, index) => {
+        const x = padding + (index / (prices.length - 1)) * chartWidth;
+        const y = padding + chartHeight - ((price - minPrice) / priceRange) * chartHeight;
+        return `${x},${y}`;
+    });
+    
+    const pathData = `M ${points.join(' L ')}`;
+    const isPositive = (changePercent || 0) >= 0;
+    const color = isPositive ? '#10b981' : '#ef4444';
+    
+    return `<svg width="${width}" height="${height}" class="sparkline"><path d="${pathData}" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+};
+
+const setupExpandButtons = () => {
+    const expandBtns = document.querySelectorAll('.expand-btn');
+    expandBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const coinId = btn.dataset.coinId;
+            if (expandedRows.has(coinId)) {
+                expandedRows.delete(coinId);
+            } else {
+                expandedRows.add(coinId);
+            }
+            renderMarketData();
+        });
+    });
+};
+
+const addCoinToPortfolioQuick = (coinId) => {
+    const quantity = prompt('Enter quantity:');
+    if (quantity && !isNaN(parseFloat(quantity)) && parseFloat(quantity) > 0) {
+        addToPortfolio(coinId, quantity);
+        alert('Coin added to portfolio!');
+    }
 };
 
 const setupTableSorting = () => {
@@ -219,11 +360,13 @@ const updateSortIndicators = (activeHeader, direction) => {
 };
 
 const setupCoinRowClicks = () => {
-    const coinRows = document.querySelectorAll('.coin-row');
+    const coinRows = document.querySelectorAll('.coin-row:not(.expanded)');
     coinRows.forEach(row => {
-        row.addEventListener('click', () => {
-            const coinId = row.dataset.coinId;
-            showCoinDetails(coinId);
+        row.addEventListener('click', (e) => {
+            if (!e.target.closest('.expand-btn') && !e.target.closest('.add-portfolio-btn')) {
+                const coinId = row.dataset.coinId;
+                showCoinDetails(coinId);
+            }
         });
     });
 };
@@ -633,7 +776,7 @@ const addCoinToPortfolioFromDetail = (coinId) => {
 const refreshBtn = document.getElementById('refresh-market');
 if (refreshBtn) {
     refreshBtn.addEventListener('click', () => {
-        loadMarketData();
+        loadMarketData(true);
     });
 }
 
