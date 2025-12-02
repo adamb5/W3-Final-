@@ -1,36 +1,44 @@
 const formatCurrency = (value) => {
     if (value === null || value === undefined) return '$0.00';
-    if (value < 0.01) return `$${value.toFixed(8)}`;
+    const numValue = typeof value === 'number' ? value : parseFloat(value);
+    if (isNaN(numValue)) return '$0.00';
+    if (numValue < 0.01) return `$${numValue.toFixed(8)}`;
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-    }).format(value);
+    }).format(numValue);
 };
 
 const formatNumber = (value) => {
     if (value === null || value === undefined) return '0';
-    if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
-    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-    if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
-    return value.toLocaleString('en-US');
+    const numValue = typeof value === 'number' ? value : parseFloat(value);
+    if (isNaN(numValue)) return '0';
+    if (numValue >= 1e12) return `$${(numValue / 1e12).toFixed(2)}T`;
+    if (numValue >= 1e9) return `$${(numValue / 1e9).toFixed(2)}B`;
+    if (numValue >= 1e6) return `$${(numValue / 1e6).toFixed(2)}M`;
+    if (numValue >= 1e3) return `$${(numValue / 1e3).toFixed(2)}K`;
+    return numValue.toLocaleString('en-US');
 };
 
 const formatPercentage = (value) => {
     if (value === null || value === undefined) return '0.00%';
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(2)}%`;
+    const numValue = typeof value === 'number' ? value : parseFloat(value);
+    if (isNaN(numValue)) return '0.00%';
+    const sign = numValue >= 0 ? '+' : '';
+    return `${sign}${numValue.toFixed(2)}%`;
 };
 
 const formatLargeNumber = (value) => {
     if (value === null || value === undefined) return '0';
-    if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
-    if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
-    if (value >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
-    if (value >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
-    return value.toLocaleString('en-US');
+    const numValue = typeof value === 'number' ? value : parseFloat(value);
+    if (isNaN(numValue)) return '0';
+    if (numValue >= 1e12) return `${(numValue / 1e12).toFixed(2)}T`;
+    if (numValue >= 1e9) return `${(numValue / 1e9).toFixed(2)}B`;
+    if (numValue >= 1e6) return `${(numValue / 1e6).toFixed(2)}M`;
+    if (numValue >= 1e3) return `${(numValue / 1e3).toFixed(2)}K`;
+    return numValue.toLocaleString('en-US');
 };
 
 const debounce = (func, wait) => {

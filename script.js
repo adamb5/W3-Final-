@@ -426,17 +426,24 @@ const renderCoinDetails = (coin) => {
         return;
     }
     
+    const currentPrice = marketData.current_price?.usd || marketData.current_price || 0;
     const change24h = marketData.price_change_percentage_24h || 0;
     const change7d = marketData.price_change_percentage_7d_in_currency || 0;
     const change30d = marketData.price_change_percentage_30d_in_currency || 0;
+    const marketCap = marketData.market_cap?.usd || marketData.market_cap || 0;
+    const volume = marketData.total_volume?.usd || marketData.total_volume || 0;
+    const circulatingSupply = marketData.circulating_supply || 0;
+    const totalSupply = marketData.total_supply || null;
+    const ath = marketData.ath?.usd || marketData.ath || 0;
+    const atl = marketData.atl?.usd || marketData.atl || 0;
     
     container.innerHTML = `
         <div class="coin-detail-header">
             <div class="coin-detail-logo">
-                <img src="${coin.image.large}" alt="${coin.name}" class="coin-large-icon">
+                <img src="${coin.image?.large || coin.image || ''}" alt="${coin.name}" class="coin-large-icon" onerror="this.style.display='none'">
             </div>
             <div class="coin-detail-info">
-                <h3>${formatCurrency(marketData.current_price.usd)}</h3>
+                <h3>${formatCurrency(currentPrice)}</h3>
                 <div class="coin-detail-changes">
                     <span class="${getChangeClass(change24h)}">24h: ${formatPercentage(change24h)}</span>
                     <span class="${getChangeClass(change7d)}">7d: ${formatPercentage(change7d)}</span>
@@ -448,27 +455,27 @@ const renderCoinDetails = (coin) => {
         <div class="coin-detail-stats">
             <div class="stat-card">
                 <div class="stat-label">Market Cap</div>
-                <div class="stat-value">${formatNumber(marketData.market_cap.usd)}</div>
+                <div class="stat-value">${formatNumber(marketCap)}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Volume (24h)</div>
-                <div class="stat-value">${formatNumber(marketData.total_volume.usd)}</div>
+                <div class="stat-value">${formatNumber(volume)}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Circulating Supply</div>
-                <div class="stat-value">${formatLargeNumber(marketData.circulating_supply)} ${coin.symbol.toUpperCase()}</div>
+                <div class="stat-value">${formatLargeNumber(circulatingSupply)} ${coin.symbol.toUpperCase()}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Total Supply</div>
-                <div class="stat-value">${marketData.total_supply ? formatLargeNumber(marketData.total_supply) : 'N/A'}</div>
+                <div class="stat-value">${totalSupply ? formatLargeNumber(totalSupply) : 'N/A'}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">All-Time High</div>
-                <div class="stat-value">${formatCurrency(marketData.ath.usd)}</div>
+                <div class="stat-value">${formatCurrency(ath)}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">All-Time Low</div>
-                <div class="stat-value">${formatCurrency(marketData.atl.usd)}</div>
+                <div class="stat-value">${formatCurrency(atl)}</div>
             </div>
         </div>
         <div class="coin-detail-chart">
