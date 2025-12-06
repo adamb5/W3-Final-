@@ -88,13 +88,13 @@ const getPortfolioValue = async (portfolio) => {
             }
         });
         
-        const totalChangePercent = totalValue > 0 ? (totalChange / (totalValue - totalChange)) * 100 : 0;
+        const totalChangePercent = totalValue > 0 && totalChange !== 0 ? (totalChange / totalValue) * 100 : 0;
         
         return {
             totalValue,
             totalChange: totalChange,
             totalChangePercent,
-            holdings
+            holdings: holdings.sort((a, b) => b.value - a.value)
         };
     } catch (error) {
         console.error('Error calculating portfolio value:', error);

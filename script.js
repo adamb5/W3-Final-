@@ -477,6 +477,18 @@ const renderCoinDetails = (coin) => {
                 <div class="stat-label">All-Time Low</div>
                 <div class="stat-value">${formatCurrency(atl)}</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-label">ATH Change</div>
+                <div class="stat-value ${getChangeClass(((currentPrice - ath) / ath) * 100)}">
+                    ${formatPercentage(((currentPrice - ath) / ath) * 100)}
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">ATL Change</div>
+                <div class="stat-value ${getChangeClass(((currentPrice - atl) / atl) * 100)}">
+                    ${formatPercentage(((currentPrice - atl) / atl) * 100)}
+                </div>
+            </div>
         </div>
         <div class="coin-detail-chart">
             <div class="chart-controls">
@@ -537,44 +549,66 @@ const loadChart = async (coinId, days) => {
 
 const renderChart = (prices, days) => {
     const container = document.getElementById('chart-container');
-    if (!container || !prices || prices.length === 0) return;
+    if (!container || !prices || prices.length === 0) {
+        showError(container, 'No chart data available.');
+        return;
+    }
     
-    const width = container.offsetWidth || 800;
-    const height = 300;
-    const padding = 40;
-    const chartWidth = width - padding * 2;
-    const chartHeight = height - padding * 2;
+    const width = Math.max(container.offsetWidth || 800, 600);
+    const height = 400;
+    const padding = { top: 20, right: 40, bottom: 40, left: 60 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
     
-    const minPrice = Math.min(...prices.map(p => p[1]));
-    const maxPrice = Math.max(...prices.map(p => p[1]));
+    const priceValues = prices.map(p => p[1]);
+    const minPrice = Math.min(...priceValues);
+    const maxPrice = Math.max(...priceValues);
     const priceRange = maxPrice - minPrice || 1;
-    
-    const points = prices.map((point, index) => {
-        const x = padding + (index / (prices.length - 1)) * chartWidth;
-        const y = padding + chartHeight - ((point[1] - minPrice) / priceRange) * chartHeight;
-        return { x, y, price: point[1], time: point[0] };
-    });
-    
-    const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-    const areaPath = pathData + ` L ${points[points.length - 1].x} ${height - padding} L ${padding} ${height - padding} Z`;
+    const pricePadding = priceRange * 0.1;
     
     const firstPrice = prices[0][1];
     const lastPrice = prices[prices.length - 1][1];
     const change = ((lastPrice - firstPrice) / firstPrice) * 100;
     const changeClass = change >= 0 ? 'positive' : 'negative';
+    const color = change >= 0 ? '#10b981' : '#ef4444';
+    
+    const points = prices.map((point, index) => {
+        const x = padding.left + (index / (prices.length - 1)) * chartWidth;
+        const y = padding.top + chartHeight - ((point[1] - (minPrice - pricePadding)) / (priceRange + pricePadding * 2)) * chartHeight;
+        return { x, y, price: point[1], time: point[0] };
+    });
+    
+    const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const areaPath = pathData + ` L ${points[points.length - 1].x} ${height - padding.bottom} L ${padding.left} ${height - padding.bottom} Z`;
+    
+    const gridLines = 5;
+    const gridYValues = [];
+    for (let i = 0; i <= gridLines; i++) {
+        const value = minPrice - pricePadding + (priceRange + pricePadding * 2) * (1 - i / gridLines);
+        gridYValues.push({
+            y: padding.top + (i / gridLines) * chartHeight,
+            value: value
+        });
+    }
     
     container.innerHTML = `
         <div class="chart-wrapper">
-            <svg width="${width}" height="${height}" class="price-chart">
+            <svg width="${width}" height="${height}" class="price-chart" viewBox="0 0 ${width} ${height}">
                 <defs>
-                    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style="stop-color:${change >= 0 ? '#10b981' : '#ef4444'};stop-opacity:0.3" />
-                        <stop offset="100%" style="stop-color:${change >= 0 ? '#10b981' : '#ef4444'};stop-opacity:0" />
+                    <linearGradient id="chartGradient-${days}" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:${color};stop-opacity:0.3" />
+                        <stop offset="100%" style="stop-color:${color};stop-opacity:0" />
                     </linearGradient>
                 </defs>
-                <path d="${areaPath}" fill="url(#chartGradient)" />
-                <path d="${pathData}" stroke="${change >= 0 ? '#10b981' : '#ef4444'}" stroke-width="2" fill="none" />
-                ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${change >= 0 ? '#10b981' : '#ef4444'}" opacity="0" class="chart-point" data-price="${p.price}" data-time="${p.time}">`).join('')}
+                <g class="grid-lines">
+                    ${gridYValues.map(g => `
+                        <line x1="${padding.left}" y1="${g.y}" x2="${width - padding.right}" y2="${g.y}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="2,2"/>
+                        <text x="${padding.left - 10}" y="${g.y + 4}" text-anchor="end" font-size="10" fill="#94a3b8">${formatCurrency(g.value)}</text>
+                    `).join('')}
+                </g>
+                <path d="${areaPath}" fill="url(#chartGradient-${days})" />
+                <path d="${pathData}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="${points[points.length - 1].x}" cy="${points[points.length - 1].y}" r="5" fill="${color}" class="chart-point-current"/>
             </svg>
             <div class="chart-info">
                 <div class="chart-price">${formatCurrency(lastPrice)}</div>
@@ -725,7 +759,7 @@ const renderPortfolioHoldings = (holdings) => {
                     ${holdings.map(holding => `
                         <tr>
                             <td>
-                                <div class="coin-info">
+                                <div class="coin-info clickable-coin" data-coin-id="${holding.coinId}">
                                     <img src="${holding.image}" alt="${holding.name}" class="coin-icon" onerror="this.style.display='none'">
                                     <div>
                                         <div class="coin-name">${holding.name}</div>
@@ -735,8 +769,7 @@ const renderPortfolioHoldings = (holdings) => {
                             </td>
                             <td>
                                 <input type="number" class="quantity-input" value="${holding.quantity}" 
-                                       data-coin-id="${holding.coinId}" 
-                                       onchange="updatePortfolioQuantity('${holding.coinId}', this.value)">
+                                       data-coin-id="${holding.coinId}">
                             </td>
                             <td>${formatCurrency(holding.current_price)}</td>
                             <td>${formatCurrency(holding.value)}</td>
@@ -744,7 +777,10 @@ const renderPortfolioHoldings = (holdings) => {
                                 ${formatPercentage(holding.change24h)}
                             </td>
                             <td>
-                                <button class="btn btn-danger btn-sm" onclick="removeFromPortfolioAndReload('${holding.coinId}')">Remove</button>
+                                <div class="holdings-actions">
+                                    <button class="btn btn-sm btn-secondary view-holding-btn" data-coin-id="${holding.coinId}">View</button>
+                                    <button class="btn btn-danger btn-sm remove-holding-btn" data-coin-id="${holding.coinId}">Remove</button>
+                                </div>
                             </td>
                         </tr>
                     `).join('')}
@@ -752,6 +788,54 @@ const renderPortfolioHoldings = (holdings) => {
             </table>
         </div>
     `;
+    
+    setupPortfolioHoldingsInteractions();
+};
+
+const setupPortfolioHoldingsInteractions = () => {
+    const quantityInputs = document.querySelectorAll('.quantity-input');
+    quantityInputs.forEach(input => {
+        input.addEventListener('change', (e) => {
+            const coinId = e.target.dataset.coinId;
+            const quantity = parseFloat(e.target.value);
+            if (!isNaN(quantity) && quantity >= 0) {
+                updatePortfolioQuantity(coinId, quantity);
+            } else {
+                e.target.value = getPortfolio().find(item => item.coinId === coinId)?.quantity || 0;
+            }
+        });
+    });
+    
+    const viewBtns = document.querySelectorAll('.view-holding-btn');
+    viewBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const coinId = btn.dataset.coinId;
+            showCoinDetails(coinId);
+        });
+    });
+    
+    const removeBtns = document.querySelectorAll('.remove-holding-btn');
+    removeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const coinId = btn.dataset.coinId;
+            if (confirm('Remove this coin from your portfolio?')) {
+                removeFromPortfolioAndReload(coinId);
+            }
+        });
+    });
+    
+    const clickableCoins = document.querySelectorAll('.clickable-coin');
+    clickableCoins.forEach(coin => {
+        coin.addEventListener('click', (e) => {
+            if (!e.target.closest('input') && !e.target.closest('button')) {
+                const coinId = coin.dataset.coinId;
+                showCoinDetails(coinId);
+            }
+        });
+        coin.style.cursor = 'pointer';
+    });
 };
 
 const loadTrendingView = async () => {
@@ -780,7 +864,7 @@ const renderTrendingCoins = (coins) => {
     container.innerHTML = `
         <div class="trending-grid">
             ${coins.map((coin, index) => `
-                <div class="trending-card card" onclick="showCoinDetails('${coin.id}')">
+                <div class="trending-card card" data-coin-id="${coin.id}">
                     <div class="trending-rank">#${index + 1}</div>
                     <div class="trending-coin-info">
                         <img src="${coin.image}" alt="${coin.name}" class="coin-icon" onerror="this.style.display='none'">
@@ -797,6 +881,20 @@ const renderTrendingCoins = (coins) => {
             `).join('')}
         </div>
     `;
+    
+    setupTrendingCardClicks();
+};
+
+const setupTrendingCardClicks = () => {
+    const trendingCards = document.querySelectorAll('.trending-card');
+    trendingCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const coinId = card.dataset.coinId;
+            if (coinId) {
+                showCoinDetails(coinId);
+            }
+        });
+    });
 };
 
 const updatePortfolioQuantity = (coinId, quantity) => {
@@ -805,10 +903,8 @@ const updatePortfolioQuantity = (coinId, quantity) => {
 };
 
 const removeFromPortfolioAndReload = (coinId) => {
-    if (confirm('Remove this coin from your portfolio?')) {
-        removeFromPortfolio(coinId);
-        loadPortfolioView();
-    }
+    removeFromPortfolio(coinId);
+    loadPortfolioView();
 };
 
 const addCoinToPortfolioFromDetail = (coinId) => {
