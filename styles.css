@@ -131,6 +131,20 @@ body {
     right: var(--spacing-md);
     height: 2px;
     background-color: var(--primary-color);
+    animation: slideIn var(--transition-base) ease;
+}
+
+@keyframes slideIn {
+    from {
+        width: 0;
+        left: 50%;
+        right: 50%;
+    }
+    to {
+        width: auto;
+        left: var(--spacing-md);
+        right: var(--spacing-md);
+    }
 }
 
 .main-container {
@@ -219,6 +233,15 @@ body {
     }
 }
 
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
 .view-header {
     display: flex;
     justify-content: space-between;
@@ -300,6 +323,10 @@ body {
     box-shadow: var(--shadow-md);
 }
 
+.btn-primary:active {
+    transform: translateY(0);
+}
+
 .btn-secondary {
     background-color: var(--bg-tertiary);
     color: var(--text-primary);
@@ -338,6 +365,10 @@ body {
     margin-bottom: var(--spacing-md);
 }
 
+.loading-state p {
+    animation: pulse 2s ease-in-out infinite;
+}
+
 @keyframes spin {
     to {
         transform: rotate(360deg);
@@ -370,6 +401,8 @@ body {
 
 .card:hover {
     box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    transition: all var(--transition-base);
 }
 
 .positive {
@@ -422,6 +455,9 @@ body {
 
 .market-table tbody tr.coin-row:not(.expanded):hover {
     cursor: pointer;
+    background-color: var(--bg-hover);
+    transform: scale(1.01);
+    transition: all var(--transition-fast);
 }
 
 .market-table tbody tr.expanded {
@@ -449,6 +485,11 @@ body {
 .expand-btn:hover {
     background-color: var(--bg-tertiary);
     color: var(--text-primary);
+    transform: scale(1.1);
+}
+
+.expand-btn {
+    transition: all var(--transition-base);
 }
 
 .sparkline-cell {
@@ -459,6 +500,11 @@ body {
 .sparkline {
     display: block;
     margin: 0 auto;
+    transition: opacity var(--transition-base);
+}
+
+.sparkline:hover {
+    opacity: 0.8;
 }
 
 .coin-detail-row {
@@ -472,6 +518,22 @@ body {
 
 .expanded-details {
     padding: var(--spacing-lg);
+    animation: slideDown var(--transition-slow) ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 500px;
+        padding-top: var(--spacing-lg);
+        padding-bottom: var(--spacing-lg);
+    }
 }
 
 .detail-grid {
@@ -543,6 +605,26 @@ body {
 .coin-price {
     font-weight: var(--font-weight-medium);
     color: var(--text-primary);
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+.coin-price.price-up {
+    animation: priceFlashGreen 0.6s ease;
+}
+
+.coin-price.price-down {
+    animation: priceFlashRed 0.6s ease;
+}
+
+@keyframes priceFlashGreen {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(16, 185, 129, 0.2); }
+}
+
+@keyframes priceFlashRed {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(239, 68, 68, 0.2); }
 }
 
 .coin-detail-header {
@@ -589,6 +671,13 @@ body {
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+}
+
+.stat-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--primary-color);
 }
 
 .stat-label {
@@ -710,6 +799,12 @@ body {
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+}
+
+.summary-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
 }
 
 .summary-label {
@@ -878,6 +973,18 @@ body {
     cursor: pointer;
     position: relative;
     padding: var(--spacing-lg);
+    transition: all var(--transition-base);
+    border: 2px solid transparent;
+}
+
+.trending-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-color);
+}
+
+.trending-card:active {
+    transform: translateY(-2px);
 }
 
 .trending-rank {
@@ -910,9 +1017,48 @@ body {
     margin-bottom: var(--spacing-xs);
 }
 
+.trending-header-info {
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background-color: var(--bg-card);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.trending-description {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    margin: 0;
+}
+
+.trending-price-container {
+    margin: var(--spacing-md) 0;
+}
+
+.trending-price {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+    transition: all var(--transition-base);
+}
+
 .trending-change {
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-medium);
+}
+
+.trending-sparkline {
+    margin: var(--spacing-md) 0;
+    padding: var(--spacing-sm);
+    background-color: var(--bg-secondary);
+    border-radius: var(--border-radius-sm);
+}
+
+.trending-market-cap {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-top: var(--spacing-sm);
 }
 
 @media (max-width: 768px) {
@@ -983,6 +1129,24 @@ body {
     .market-table td {
         padding: var(--spacing-sm);
         font-size: var(--font-size-sm);
+    }
+
+    .trending-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .trending-card:hover {
+        transform: translateY(-2px);
+    }
+}
+
+@media (max-width: 480px) {
+    .trending-price {
+        font-size: var(--font-size-lg);
+    }
+
+    .trending-market-cap {
+        font-size: var(--font-size-xs);
     }
 }
 

@@ -117,6 +117,8 @@ const loadCoinList = async () => {
     }
 };
 
+let previousMarketData = new Map();
+
 const loadMarketData = async (forceRefresh = false) => {
     const container = document.getElementById('market-content');
     if (!container) return;
@@ -126,7 +128,21 @@ const loadMarketData = async (forceRefresh = false) => {
     }
     
     try {
-        marketData = await fetchMarketData(1, 100, forceRefresh);
+        const newMarketData = await fetchMarketData(1, 100, forceRefresh);
+        
+        if (!forceRefresh && previousMarketData.size > 0) {
+            newMarketData.forEach(coin => {
+                const oldCoin = previousMarketData.get(coin.id);
+                if (oldCoin && oldCoin.current_price !== coin.current_price) {
+                    coin.priceChanged = true;
+                    coin.priceDirection = coin.current_price > oldCoin.current_price ? 'up' : 'down';
+                }
+            });
+        }
+        
+        previousMarketData = new Map(newMarketData.map(coin => [coin.id, coin]));
+        marketData = newMarketData;
+        
         const searchInput = document.getElementById('search-input');
         if (searchInput && searchInput.value.trim()) {
             const query = searchInput.value.trim().toLowerCase();
@@ -195,7 +211,7 @@ const renderMarketData = () => {
                                     </div>
                                 </div>
                             </td>
-                            <td class="coin-price">${formatCurrency(coin.current_price)}</td>
+                            <td class="coin-price ${coin.priceChanged ? `price-${coin.priceDirection}` : ''}" data-price="${coin.current_price}">${formatCurrency(coin.current_price)}</td>
                             <td class="${getChangeClass(coin.price_change_percentage_24h)}">
                                 ${formatPercentage(coin.price_change_percentage_24h)}
                             </td>
@@ -264,6 +280,16 @@ const renderMarketData = () => {
     setupCoinRowClicks();
     setupExpandButtons();
     setupViewDetailsButtons();
+    cleanupPriceAnimations();
+};
+
+const cleanupPriceAnimations = () => {
+    setTimeout(() => {
+        const priceElements = document.querySelectorAll('.coin-price.price-up, .coin-price.price-down');
+        priceElements.forEach(el => {
+            el.classList.remove('price-up', 'price-down');
+        });
+    }, 600);
 };
 
 const setupViewDetailsButtons = () => {
@@ -862,8 +888,13 @@ const renderTrendingCoins = (coins) => {
     }
     
     container.innerHTML = `
+        <div class="trending-header-info">
+            <p class="trending-description">Top trending cryptocurrencies based on search volume and social activity</p>
+        </div>
         <div class="trending-grid">
-            ${coins.map((coin, index) => `
+            ${coins.map((coin, index) => {
+                const sparkline = coin.sparkline_in_7d?.price || [];
+                return `
                 <div class="trending-card card" data-coin-id="${coin.id}">
                     <div class="trending-rank">#${index + 1}</div>
                     <div class="trending-coin-info">
@@ -873,16 +904,28 @@ const renderTrendingCoins = (coins) => {
                             <div class="coin-symbol">${coin.symbol.toUpperCase()}</div>
                         </div>
                     </div>
-                    <div class="trending-price">${formatCurrency(coin.current_price)}</div>
-                    <div class="trending-change ${getChangeClass(coin.price_change_percentage_24h)}">
-                        ${formatPercentage(coin.price_change_percentage_24h)}
+                    <div class="trending-price-container">
+                        <div class="trending-price" data-price="${coin.current_price}">${formatCurrency(coin.current_price)}</div>
+                        <div class="trending-change ${getChangeClass(coin.price_change_percentage_24h)}">
+                            ${formatPercentage(coin.price_change_percentage_24h)}
+                        </div>
+                    </div>
+                    ${sparkline.length > 0 ? `
+                    <div class="trending-sparkline">
+                        ${renderSparkline(sparkline, coin.price_change_percentage_24h)}
+                    </div>
+                    ` : ''}
+                    <div class="trending-market-cap">
+                        Market Cap: ${formatNumber(coin.market_cap)}
                     </div>
                 </div>
-            `).join('')}
+            `;
+            }).join('')}
         </div>
     `;
     
     setupTrendingCardClicks();
+    animateTrendingPrices();
 };
 
 const setupTrendingCardClicks = () => {
@@ -894,6 +937,20 @@ const setupTrendingCardClicks = () => {
                 showCoinDetails(coinId);
             }
         });
+    });
+};
+
+const animateTrendingPrices = () => {
+    const priceElements = document.querySelectorAll('.trending-price[data-price]');
+    priceElements.forEach(el => {
+        const targetPrice = parseFloat(el.dataset.price);
+        if (!isNaN(targetPrice)) {
+            el.style.opacity = '0.7';
+            setTimeout(() => {
+                el.style.transition = 'opacity 0.3s ease';
+                el.style.opacity = '1';
+            }, 50);
+        }
     });
 };
 
