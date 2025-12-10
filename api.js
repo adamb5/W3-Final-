@@ -20,7 +20,6 @@ const fetchMarketData = async (page = 1, perPage = 100, forceRefresh = false) =>
         cacheTimestamp = now;
         return data;
     } catch (error) {
-        console.error('Error fetching market data:', error);
         throw error;
     }
 };
@@ -48,7 +47,6 @@ const fetchCoinDetails = async (coinId) => {
         
         return data;
     } catch (error) {
-        console.error('Error fetching coin details:', error);
         throw error;
     }
 };
@@ -65,7 +63,6 @@ const fetchTrendingCoins = async () => {
         if (!marketData.ok) throw new Error(`HTTP error! status: ${marketData.status}`);
         return await marketData.json();
     } catch (error) {
-        console.error('Error fetching trending coins:', error);
         throw error;
     }
 };
@@ -78,7 +75,6 @@ const fetchHistoricalData = async (coinId, days = 7) => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return await response.json();
     } catch (error) {
-        console.error('Error fetching historical data:', error);
         throw error;
     }
 };
@@ -91,7 +87,6 @@ const searchCoins = async (query) => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return await response.json();
     } catch (error) {
-        console.error('Error searching coins:', error);
         throw error;
     }
 };
@@ -104,7 +99,6 @@ const fetchCoinList = async () => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return await response.json();
     } catch (error) {
-        console.error('Error fetching coin list:', error);
         throw error;
     }
 };

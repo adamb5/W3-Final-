@@ -4,11 +4,18 @@ let filteredMarketData = [];
 let coinList = [];
 let expandedRows = new Set();
 let marketRefreshInterval = null;
+let lastUpdateTime = null;
+let activeFilters = {
+    marketCap: '',
+    change: '',
+    volume: ''
+};
 
 const init = () => {
     setupNavigation();
     setupSearch();
     setupPortfolioForm();
+    setupFilters();
     loadMarketData();
     loadCoinList();
     startMarketAutoRefresh();
@@ -21,6 +28,99 @@ const startMarketAutoRefresh = () => {
             loadMarketData(true);
         }
     }, 60000);
+};
+
+const updateLastUpdatedTime = () => {
+    lastUpdateTime = new Date();
+    const timeEl = document.getElementById('last-updated');
+    if (timeEl) {
+        const timeStr = lastUpdateTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        timeEl.textContent = `Last updated: ${timeStr}`;
+        timeEl.style.display = 'block';
+    }
+};
+
+const setupFilters = () => {
+    const toggleFiltersBtn = document.getElementById('toggle-filters');
+    const filterControls = document.getElementById('filter-controls');
+    const marketCapFilter = document.getElementById('filter-market-cap');
+    const changeFilter = document.getElementById('filter-change');
+    const volumeFilter = document.getElementById('filter-volume');
+    const clearFiltersBtn = document.getElementById('clear-filters');
+    
+    if (toggleFiltersBtn && filterControls) {
+        toggleFiltersBtn.addEventListener('click', () => {
+            const isVisible = filterControls.style.display !== 'none';
+            filterControls.style.display = isVisible ? 'none' : 'flex';
+            toggleFiltersBtn.classList.toggle('active', !isVisible);
+        });
+    }
+    
+    const applyFilters = () => {
+        activeFilters.marketCap = marketCapFilter?.value || '';
+        activeFilters.change = changeFilter?.value || '';
+        activeFilters.volume = volumeFilter?.value || '';
+        applyAllFilters();
+    };
+    
+    if (marketCapFilter) marketCapFilter.addEventListener('change', applyFilters);
+    if (changeFilter) changeFilter.addEventListener('change', applyFilters);
+    if (volumeFilter) volumeFilter.addEventListener('change', applyFilters);
+    
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            if (marketCapFilter) marketCapFilter.value = '';
+            if (changeFilter) changeFilter.value = '';
+            if (volumeFilter) volumeFilter.value = '';
+            activeFilters = { marketCap: '', change: '', volume: '' };
+            applyAllFilters();
+        });
+    }
+};
+
+const applyAllFilters = () => {
+    if (currentView !== 'market') return;
+    
+    let filtered = [...marketData];
+    
+    const searchInput = document.getElementById('search-input');
+    if (searchInput && searchInput.value.trim()) {
+        const query = searchInput.value.trim().toLowerCase();
+        filtered = filtered.filter(coin => 
+            coin.name.toLowerCase().includes(query) ||
+            coin.symbol.toLowerCase().includes(query)
+        );
+    }
+    
+    if (activeFilters.marketCap) {
+        if (activeFilters.marketCap === 'large') {
+            filtered = filtered.filter(coin => coin.market_cap >= 10e9);
+        } else if (activeFilters.marketCap === 'mid') {
+            filtered = filtered.filter(coin => coin.market_cap >= 1e9 && coin.market_cap < 10e9);
+        } else if (activeFilters.marketCap === 'small') {
+            filtered = filtered.filter(coin => coin.market_cap < 1e9);
+        }
+    }
+    
+    if (activeFilters.change) {
+        if (activeFilters.change === 'gainers') {
+            filtered = filtered.filter(coin => (coin.price_change_percentage_24h || 0) > 0);
+        } else if (activeFilters.change === 'losers') {
+            filtered = filtered.filter(coin => (coin.price_change_percentage_24h || 0) < 0);
+        }
+    }
+    
+    if (activeFilters.volume) {
+        const avgVolume = marketData.reduce((sum, coin) => sum + (coin.total_volume || 0), 0) / marketData.length;
+        if (activeFilters.volume === 'high') {
+            filtered = filtered.filter(coin => coin.total_volume >= avgVolume);
+        } else if (activeFilters.volume === 'low') {
+            filtered = filtered.filter(coin => coin.total_volume < avgVolume);
+        }
+    }
+    
+    filteredMarketData = filtered;
+    renderMarketData();
 };
 
 const setupNavigation = () => {
@@ -83,8 +183,7 @@ const setupSearch = () => {
                 debounceSearch(query);
             } else {
                 searchClear.style.display = 'none';
-                filteredMarketData = marketData;
-                renderMarketData();
+                applyAllFilters();
             }
         });
     }
@@ -93,19 +192,14 @@ const setupSearch = () => {
         searchClear.addEventListener('click', () => {
             searchInput.value = '';
             searchClear.style.display = 'none';
-            filteredMarketData = marketData;
-            renderMarketData();
+            applyAllFilters();
         });
     }
 };
 
 const debounceSearch = debounce((query) => {
     if (currentView === 'market') {
-        filteredMarketData = marketData.filter(coin => 
-            coin.name.toLowerCase().includes(query.toLowerCase()) ||
-            coin.symbol.toLowerCase().includes(query.toLowerCase())
-        );
-        renderMarketData();
+        applyAllFilters();
     }
 }, 300);
 
@@ -113,7 +207,6 @@ const loadCoinList = async () => {
     try {
         coinList = await fetchCoinList();
     } catch (error) {
-        console.error('Failed to load coin list:', error);
     }
 };
 
@@ -142,18 +235,8 @@ const loadMarketData = async (forceRefresh = false) => {
         
         previousMarketData = new Map(newMarketData.map(coin => [coin.id, coin]));
         marketData = newMarketData;
-        
-        const searchInput = document.getElementById('search-input');
-        if (searchInput && searchInput.value.trim()) {
-            const query = searchInput.value.trim().toLowerCase();
-            filteredMarketData = marketData.filter(coin => 
-                coin.name.toLowerCase().includes(query) ||
-                coin.symbol.toLowerCase().includes(query)
-            );
-        } else {
-            filteredMarketData = marketData;
-        }
-        renderMarketData();
+        applyAllFilters();
+        updateLastUpdatedTime();
     } catch (error) {
         if (!forceRefresh) {
             showError(container, 'Failed to load market data. Please try again later.');
@@ -436,7 +519,6 @@ const loadCoinDetails = async (coinId) => {
         if (title) title.textContent = `${coin.name} (${coin.symbol.toUpperCase()})`;
         renderCoinDetails(coin);
     } catch (error) {
-        console.error('Error loading coin details:', error);
         const errorMsg = error.message || 'Failed to load coin details. Please check the console for more information.';
         showError(container, errorMsg);
     }

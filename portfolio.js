@@ -5,7 +5,6 @@ const getPortfolio = () => {
         const stored = localStorage.getItem(PORTFOLIO_STORAGE_KEY);
         return stored ? JSON.parse(stored) : [];
     } catch (error) {
-        console.error('Error loading portfolio:', error);
         return [];
     }
 };
@@ -14,7 +13,6 @@ const savePortfolio = (portfolio) => {
     try {
         localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(portfolio));
     } catch (error) {
-        console.error('Error saving portfolio:', error);
     }
 };
 
@@ -97,7 +95,6 @@ const getPortfolioValue = async (portfolio) => {
             holdings: holdings.sort((a, b) => b.value - a.value)
         };
     } catch (error) {
-        console.error('Error calculating portfolio value:', error);
         return { totalValue: 0, totalChange: 0, totalChangePercent: 0, holdings: [] };
     }
 };

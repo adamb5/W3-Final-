@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Real-time cryptocurrency portfolio dashboard with market analytics, price tracking, and portfolio management">
-    <title>Crypto Portfolio Dashboard | Real-Time Market Analytics</title>
+    <meta name="keywords" content="cryptocurrency, crypto, portfolio, bitcoin, ethereum, market, trading, dashboard">
+    <meta name="author" content="Adam">
+    <meta property="og:title" content="Adam's Crypto Dashboard">
+    <meta property="og:description" content="Real-time cryptocurrency portfolio dashboard with market analytics">
+    <meta property="og:type" content="website">
+    <title>Adam's Crypto Dashboard | Real-Time Market Analytics</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
 </head>
 <body>
     <header class="header">
@@ -31,6 +37,25 @@
                 <input type="text" id="search-input" class="search-input" placeholder="Search cryptocurrencies...">
                 <button class="search-clear" id="search-clear" style="display: none;">×</button>
             </div>
+            <div class="filter-controls" id="filter-controls" style="display: none;">
+                <select id="filter-market-cap" class="filter-select">
+                    <option value="">All Market Caps</option>
+                    <option value="large">Large Cap ($10B+)</option>
+                    <option value="mid">Mid Cap ($1B - $10B)</option>
+                    <option value="small">Small Cap (< $1B)</option>
+                </select>
+                <select id="filter-change" class="filter-select">
+                    <option value="">All Changes</option>
+                    <option value="gainers">Gainers (24h)</option>
+                    <option value="losers">Losers (24h)</option>
+                </select>
+                <select id="filter-volume" class="filter-select">
+                    <option value="">All Volumes</option>
+                    <option value="high">High Volume</option>
+                    <option value="low">Low Volume</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" id="clear-filters">Clear Filters</button>
+            </div>
         </div>
 
         <div class="view-container">
@@ -38,12 +63,19 @@
                 <div class="view-header">
                     <h2>Market Overview</h2>
                     <div class="view-controls">
+                        <button class="btn btn-secondary btn-sm" id="toggle-filters">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                            </svg>
+                            Filters
+                        </button>
                         <button class="refresh-btn" id="refresh-market">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
                             </svg>
                             Refresh
                         </button>
+                        <div class="last-updated" id="last-updated"></div>
                     </div>
                 </div>
                 <div id="market-content" class="market-content">
